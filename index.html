@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PielSegura · Escala de Braden</title>
+<meta name="description" content="App de apoyo para Enfermería: valoración del riesgo de lesiones por presión con la escala de Braden.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: hoja de valoración clínica — columna de subescalas a la izquierda, panel de resultado fijo a la derecha (se apila en celular). */
+:root{
+  --bg:#f3f6f6; --surface:#ffffff; --ink:#14302f; --muted:#56706e; --line:#d5e0df;
+  --accent:#0c6b66; --accent-soft:#dcefed; --accent-ink:#ffffff;
+  --r-ok:#2e8b57; --r-low:#7a9a1c; --r-mod:#c99000; --r-high:#d46a1f; --r-vhigh:#c0362c;
+  --r-ok-bg:#e3f3ea; --r-low-bg:#eef3dc; --r-mod-bg:#fbf0d2; --r-high-bg:#fbe5d5; --r-vhigh-bg:#f8dcd9;
+  --font-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-data:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1b1b; --surface:#162625; --ink:#e3efee; --muted:#9db5b2; --line:#2a3d3c;
+  --accent:#4cc2b8; --accent-soft:#1d3735; --accent-ink:#0b1716;
+  --r-ok:#5cc489; --r-low:#b5d34f; --r-mod:#f2c14e; --r-high:#f2924d; --r-vhigh:#f0716a;
+  --r-ok-bg:#183326; --r-low-bg:#283119; --r-mod-bg:#352c12; --r-high-bg:#3a2617; --r-vhigh-bg:#3d1d1b;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1b1b; --surface:#162625; --ink:#e3efee; --muted:#9db5b2; --line:#2a3d3c;
+  --accent:#4cc2b8; --accent-soft:#1d3735; --accent-ink:#0b1716;
+  --r-ok:#5cc489; --r-low:#b5d34f; --r-mod:#f2c14e; --r-high:#f2924d; --r-vhigh:#f0716a;
+  --r-ok-bg:#183326; --r-low-bg:#283119; --r-mod-bg:#352c12; --r-high-bg:#3a2617; --r-vhigh-bg:#3d1d1b;
+  color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.15}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,label:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Encabezado */
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:2px solid var(--ink);padding-bottom:14px}
+.brand{display:flex;flex-direction:column;gap:4px;min-width:0}
+.brand .eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.brand h1{font-size:clamp(28px,5vw,40px);font-weight:800;letter-spacing:-.01em}
+.brand h1 span{color:var(--accent)}
+.brand p{margin:0;color:var(--muted);max-width:60ch}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:10px 14px;border-radius:999px;font-weight:700;font-size:15px;min-height:44px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:hover{filter:brightness(1.05)}
+
+.banner{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border-radius:var(--radius);padding:12px 14px;font-size:14px}
+.banner b{white-space:nowrap}
+
+/* Datos ficticios del paciente */
+.patient{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 180px}
+.field label{font-size:13px;font-weight:700;color:var(--muted)}
+.field input{font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:44px;width:100%}
+.field small{color:var(--muted);font-size:12px}
+.sample-tag{font-size:12px;font-weight:700;background:var(--r-mod-bg);color:var(--ink);padding:4px 10px;border-radius:999px;align-self:center}
+
+/* Rejilla principal */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
+@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Subescalas */
+.scales{display:flex;flex-direction:column;gap:14px;min-width:0}
+fieldset.scale{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);padding:14px 16px 16px;margin:0;min-width:0}
+.scale legend{padding:0;display:contents}
+.scale-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.scale-head h2{font-size:19px;font-weight:600}
+.scale-head .q{font-size:13px;color:var(--muted)}
+.scale-head .val{font-family:var(--font-data);font-weight:600;font-size:15px;color:var(--muted);white-space:nowrap}
+.scale-head .val.set{color:var(--accent)}
+.opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:640px){.opts,.opts.three{grid-template-columns:minmax(0,1fr)}}
+.opt{position:relative;display:flex;flex-direction:column;gap:4px;border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;background:var(--bg);min-width:0}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt .n{font-family:var(--font-data);font-weight:600;font-size:13px;color:var(--muted)}
+.opt .t{font-weight:700;font-size:15px;line-height:1.25}
+.opt .d{font-size:13px;color:var(--muted);line-height:1.4}
+.opt:hover{border-color:var(--accent)}
+.opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.opt:has(input:checked) .n{color:var(--accent)}
+.opt:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
+
+/* Panel de resultado */
+.result{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:920px){.result{position:static}}
+.score-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px}
+.score-row{display:flex;align-items:center;gap:16px}
+.score-num{font-family:var(--font-display);font-weight:800;font-size:64px;line-height:1;font-variant-numeric:tabular-nums}
+.score-num small{font-size:20px;color:var(--muted);font-weight:600}
+.risk-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-weight:700;font-size:16px}
+.risk-pill::before{content:"";width:12px;height:12px;border-radius:50%;background:currentColor}
+.progress{font-size:13px;color:var(--muted)}
+/* Semáforo */
+.lights{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.light{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);text-align:center;line-height:1.2}
+.light i{display:block;height:10px;border-radius:3px;opacity:.28}
+.light.on i{opacity:1;height:14px}
+.light.on{color:var(--ink);font-weight:700}
+.light .rng{font-family:var(--font-data)}
+
+/* Pestañas */
+.tabs-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.tablist{display:flex;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{flex:1 0 auto;border:0;background:transparent;color:var(--muted);padding:12px 12px;font-weight:700;font-size:14px;border-bottom:3px solid transparent;min-height:44px}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.panel h3{font-size:16px;font-weight:600}
+.panel ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14.5px}
+.panel li b{font-weight:700}
+.why{font-size:12px;color:var(--muted);display:block}
+.note-box{white-space:pre-wrap;font-size:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:320px;overflow:auto;user-select:text}
+.copy-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.copied{font-size:13px;color:var(--accent);font-weight:700}
+.empty{font-size:14px;color:var(--muted)}
+.src{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+
+.mbar{display:none}
+@media (max-width:920px){
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border-top:1px solid var(--line);
+    padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  body{padding-bottom:96px}
+}
+.mbar .ms{font-family:var(--font-display);font-weight:800;font-size:28px;font-variant-numeric:tabular-nums}
+.mbar .ms small{font-size:14px;color:var(--muted)}
+.mbar .mr{font-weight:700;font-size:14px}
+footer.foot{border-top:1px solid var(--line);padding-top:14px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+footer.foot a{color:var(--accent)}
+
+/* Aviso de uso responsable */
+.modal-bg{position:fixed;inset:0;background:rgba(10,25,24,.6);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:50}
+.modal{background:var(--surface);color:var(--ink);border-radius:14px;max-width:560px;width:100%;padding:22px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto}
+.modal h2{font-size:24px}
+.modal ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:no-preference){.score-num,.risk-pill{transition:color .25s,background .25s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Herramienta de apoyo para Enfermería</span>
+      <h1>Piel<span>Segura</span></h1>
+      <p>Valora el riesgo de lesiones por presión con la escala de Braden, obtén el semáforo de riesgo, un plan de cuidados preventivo y una nota lista para copiar.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnSample" type="button">Cargar caso de ejemplo</button>
+      <button class="btn primary" id="btnReset" type="button">Nueva valoración</button>
+      <button class="btn" id="btnInfo" type="button">Uso responsable</button>
+    </div>
+  </header>
+
+  <div class="banner" role="note"><b>Importante:</b> <span>esta app apoya la valoración, no reemplaza el criterio del profesional de enfermería. Use solo datos ficticios o anonimizados. La app no guarda ningún dato: al cerrar la página todo se borra.</span></div>
+
+  <section class="patient" aria-label="Datos de la valoración">
+    <div class="field">
+      <label for="pid">Identificador (ficticio)</label>
+      <input id="pid" type="text" maxlength="20" placeholder="Ej.: Cama 12 / Paciente A" autocomplete="off">
+      <small>No escriba nombres ni documentos reales.</small>
+    </div>
+    <div class="field">
+      <label for="pservice">Servicio</label>
+      <input id="pservice" type="text" maxlength="30" placeholder="Ej.: Medicina interna" autocomplete="off">
+    </div>
+    <span class="sample-tag" id="sampleTag" hidden>Caso de ejemplo · datos ficticios</span>
+  </section>
+
+  <div class="grid">
+    <form class="scales" id="scales" aria-label="Subescalas de Braden"></form>
+
+    <aside class="result" id="resultado" aria-live="polite">
+      <div class="score-card">
+        <div class="score-row">
+          <div class="score-num" id="scoreNum">–<small>/23</small></div>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+            <span class="risk-pill" id="riskPill">Sin calcular</span>
+            <span class="progress" id="progress">0 de 6 subescalas</span>
+          </div>
+        </div>
+        <div class="lights" id="lights" aria-hidden="true"></div>
+      </div>
+
+      <div class="tabs-card">
+        <div class="tablist" role="tablist">
+          <button class="tab" role="tab" id="tab-plan" aria-selected="true" aria-controls="panel-plan" type="button">Plan de cuidados</button>
+          <button class="tab" role="tab" id="tab-nota" aria-selected="false" aria-controls="panel-nota" type="button">Nota</button>
+          <button class="tab" role="tab" id="tab-fam" aria-selected="false" aria-controls="panel-fam" type="button">Familia</button>
+        </div>
+        <div class="panel" role="tabpanel" id="panel-plan" aria-labelledby="tab-plan"></div>
+        <div class="panel" role="tabpanel" id="panel-nota" aria-labelledby="tab-nota" hidden></div>
+        <div class="panel" role="tabpanel" id="panel-fam" aria-labelledby="tab-fam" hidden></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="foot">
+    <span><b>Fuentes:</b> Bergstrom, Braden, Laguzza y Holman (1987), escala de Braden · Puntos de corte según Lima-Serrano et al. (2018), <i>Medicina Intensiva</i> · Medidas preventivas según la Guía Internacional NPIAP/EPUAP/PPPIA (2019) y el paquete instruccional “Prevención úlceras por presión” del Ministerio de Salud y Protección Social de Colombia.</span>
+    <span>Protección de datos: la app no solicita ni almacena datos personales (Ley 1581 de 2012, Habeas Data). Proyecto académico de Enfermería — Informática con énfasis en IA.</span>
+  </footer>
+</div>
+
+<div class="mbar" aria-hidden="true"><div style="display:flex;align-items:baseline;gap:10px;min-width:0"><span class="ms" id="mScore">–<small>/23</small></span><span class="mr" id="mRisk">Sin calcular</span></div><a class="btn primary" href="#resultado" style="text-decoration:none;display:inline-flex;align-items:center">Ver resultado</a></div>
+
+<div class="modal-bg" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal">
+    <h2 id="mTitle">Antes de usar PielSegura</h2>
+    <ul>
+      <li><b>Es una herramienta de apoyo.</b> No sustituye el juicio clínico del profesional de enfermería ni la valoración médica.</li>
+      <li><b>Información verificada.</b> La escala, los puntos de corte y las medidas preventivas se contrastaron con fuentes científicas y guías citadas al pie de la página.</li>
+      <li><b>Sin datos reales.</b> Use datos ficticios o anonimizados. La app no guarda información: todo se borra al cerrar la página (Ley 1581 de 2012).</li>
+      <li><b>Hecha con IA.</b> La interfaz, la lógica y los textos se generaron con IA generativa y fueron revisados por el grupo.</li>
+    </ul>
+    <button class="btn primary" id="btnAccept" type="button">Entiendo, continuar</button>
+  </div>
+</div>
+
+<script>
+const SCALES = [
+  {key:"sens", name:"Percepción sensorial", q:"Capacidad de responder con sentido a la molestia por presión", opts:[
+    ["Completamente limitada","No reacciona ante estímulos dolorosos por disminución de la conciencia o sedación, o no siente dolor en la mayor parte del cuerpo."],
+    ["Muy limitada","Reacciona solo ante estímulos dolorosos; no comunica su malestar salvo con quejidos o agitación, o no siente dolor en más de la mitad del cuerpo."],
+    ["Ligeramente limitada","Responde a órdenes verbales, pero no siempre puede pedir que lo cambien de posición, o tiene alteración sensorial en una o dos extremidades."],
+    ["Sin limitaciones","Responde a órdenes verbales. No tiene déficit sensorial que le impida sentir o expresar dolor o malestar."]]},
+  {key:"hum", name:"Exposición a la humedad", q:"Grado en que la piel está expuesta a la humedad", opts:[
+    ["Constantemente húmeda","La piel está húmeda casi siempre por sudor, orina u otros líquidos; se nota humedad cada vez que se moviliza al paciente."],
+    ["A menudo húmeda","La piel está húmeda con frecuencia, pero no siempre; la ropa de cama se cambia al menos una vez por turno."],
+    ["Ocasionalmente húmeda","La piel está húmeda de vez en cuando; requiere un cambio adicional de ropa de cama aproximadamente una vez al día."],
+    ["Raramente húmeda","La piel suele estar seca; la ropa de cama se cambia según la rutina."]]},
+  {key:"act", name:"Actividad", q:"Grado de actividad física", opts:[
+    ["Encamado","Permanece confinado en la cama."],
+    ["En silla","Camina muy poco o nada; no soporta su propio peso o necesita ayuda para pasar a la silla."],
+    ["Deambula ocasionalmente","Camina ocasionalmente durante el día, distancias muy cortas, con o sin ayuda; pasa la mayor parte del turno en cama o silla."],
+    ["Deambula frecuentemente","Camina fuera de la habitación al menos dos veces al día y dentro de ella al menos cada dos horas."]]},
+  {key:"mov", name:"Movilidad", q:"Capacidad de cambiar y controlar la posición del cuerpo", opts:[
+    ["Completamente inmóvil","No hace ni el más mínimo cambio de posición del cuerpo o las extremidades sin ayuda."],
+    ["Muy limitada","Hace ligeros cambios de posición ocasionales, pero no puede hacer cambios frecuentes o importantes sin ayuda."],
+    ["Ligeramente limitada","Hace por sí solo cambios de posición frecuentes, aunque ligeros."],
+    ["Sin limitaciones","Hace cambios de posición importantes y frecuentes sin ayuda."]]},
+  {key:"nut", name:"Nutrición", q:"Patrón habitual de ingesta de alimentos", opts:[
+    ["Muy pobre","Nunca come una comida completa ni más de un tercio; poca proteína y pocos líquidos; o está en ayuno, con líquidos claros o hidratación IV por más de 5 días."],
+    ["Probablemente inadecuada","Rara vez come una comida completa, suele comer la mitad; o recibe menos de la cantidad óptima de dieta líquida o por sonda."],
+    ["Adecuada","Come más de la mitad de la mayoría de las comidas; o recibe nutrición por sonda o parenteral que probablemente cubre sus necesidades."],
+    ["Excelente","Come la mayor parte de cada comida y nunca rechaza una; no requiere suplementos."]]},
+  {key:"fric", name:"Fricción y deslizamiento", q:"Roce de la piel contra las superficies al moverse", opts:[
+    ["Problema","Requiere ayuda moderada o máxima para moverse; es imposible levantarlo sin que se deslice sobre las sábanas; se desliza con frecuencia; espasticidad, contracturas o agitación causan roce casi constante."],
+    ["Problema potencial","Se mueve con poca fuerza o necesita mínima ayuda; la piel probablemente roza las sábanas o la silla; a veces se desliza hacia abajo."],
+    ["Sin problema aparente","Se mueve en la cama y en la silla de forma independiente y se levanta por completo al moverse; mantiene buena posición."]]}
+];
+
+const RISKS = [
+  {id:"vhigh", label:"Riesgo muy alto", min:6,  max:9,  c:"--r-vhigh"},
+  {id:"high",  label:"Riesgo alto",     min:10, max:12, c:"--r-high"},
+  {id:"mod",   label:"Riesgo moderado", min:13, max:14, c:"--r-mod"},
+  {id:"low",   label:"Riesgo bajo",     min:15, max:18, c:"--r-low"},
+  {id:"ok",    label:"Sin riesgo",      min:19, max:23, c:"--r-ok"}
+];
+const SAMPLE = {pid:"Cama 12 – Paciente A", service:"Medicina interna", v:{sens:3,hum:2,act:1,mov:2,nut:2,fric:2}};
+
+const state = {};
+const $ = s => document.querySelector(s);
+
+function buildScales(){
+  const form = $("#scales");
+  form.innerHTML = SCALES.map(s => `
+    <fieldset class="scale" id="fs-${s.key}">
+      <legend><div class="scale-head"><div><h2>${s.name}</h2><span class="q">${s.q}</span></div><span class="val" id="val-${s.key}">— / ${s.opts.length}</span></div></legend>
+      <div class="opts ${s.opts.length===3?'three':''}">
+        ${s.opts.map((o,i)=>`
+          <label class="opt" for="${s.key}-${i+1}">
+            <input type="radio" name="${s.key}" id="${s.key}-${i+1}" value="${i+1}">
+            <span class="n">${i+1} punto${i?'s':''}</span>
+            <span class="t">${o[0]}</span>
+            <span class="d">${o[1]}</span>
+          </label>`).join("")}
+      </div>
+    </fieldset>`).join("");
+  form.addEventListener("change", e => {
+    if(e.target.name){ state[e.target.name] = +e.target.value; $("#sampleTag").hidden = true; render(); }
+  });
+  form.addEventListener("submit", e => e.preventDefault());
+  $("#lights").innerHTML = RISKS.map(r=>`<div class="light" data-r="${r.id}"><i style="background:var(${r.c})"></i><span>${r.label.replace("Riesgo ","")}</span><span class="rng">${r.min===6?'≤9':r.max===23?'≥19':r.min+'–'+r.max}</span></div>`).join("");
+}
+
+function riskOf(score){ return RISKS.find(r => score>=r.min && score<=r.max); }
+
+/* Plan de cuidados: medidas según nivel de riesgo + medidas dirigidas a las subescalas con puntaje bajo */
+function buildPlan(score, risk){
+  const g = [];  // generales
+  const t = [];  // dirigidas
+  if(risk.id==="ok"){
+    g.push(["Inspeccione la piel al ingreso y cuando cambie el estado del paciente","Revalore con Braden según el protocolo de su institución."]);
+    g.push(["Fomente la movilidad y el autocuidado","Mantener la actividad habitual protege la piel."]);
+  } else {
+    g.push(["Inspeccione la piel en cada cambio de posición","Priorice sacro, talones, trocánteres, isquiones, codos y occipucio."]);
+    g.push(["Haga cambios de posición programados, en general cada 2 a 3 horas","Individualice la frecuencia; si hay enrojecimiento que no blanquea, aumente la frecuencia. (NPIAP/EPUAP/PPPIA, 2019)"]);
+    g.push(["Use la posición lateral a 30° y evite la lateral a 90°","Mantenga la cabecera a 30° o menos si la condición clínica lo permite."]);
+    g.push(["Libere la presión de los talones","Use almohadas o dispositivos bajo la pantorrilla para que el talón quede sin apoyo."]);
+    g.push(["Mantenga la piel limpia, seca e hidratada","Aplique emolientes; evite productos con alcohol y no masajee las prominencias óseas."]);
+  }
+  if(risk.id==="mod" || risk.id==="high" || risk.id==="vhigh")
+    g.push(["Use una superficie de redistribución de presión","Por ejemplo, colchón de espuma viscoelástica en lugar del colchón estándar."]);
+  if(risk.id==="high" || risk.id==="vhigh"){
+    g.push(["Considere una superficie activa (colchón de presión alterna)","Según disponibilidad institucional y valoración del equipo."]);
+    g.push(["Considere apósitos profilácticos de espuma de silicona","En sacro y talones, sin dejar de hacer los cambios de posición."]);
+  }
+  if(risk.id==="vhigh")
+    g.push(["Informe al equipo y registre el riesgo muy alto","Supervise con mayor frecuencia y coordine un plan interdisciplinario."]);
+
+  if(state.sens<=2) t.push(["Percepción sensorial baja","El paciente no avisará si algo le duele: revise la piel con más frecuencia y verifique la posición de sondas y dispositivos."]);
+  if(state.hum<=2) t.push(["Humedad frecuente","Ofrezca ayuda para ir al baño o haga higiene perineal cada 2 horas; use cremas barrera y cambie la ropa de cama húmeda de inmediato."]);
+  if(state.act<=2 || state.mov<=2) t.push(["Actividad o movilidad limitada","Programe y registre los cambios de posición; si está en silla, limite el tiempo sentado y redistribuya el peso; considere valoración por fisioterapia."]);
+  if(state.nut<=2) t.push(["Nutrición deficiente","Solicite tamizaje y valoración por nutrición; registre la ingesta y la hidratación del paciente."]);
+  if(state.fric<=2) t.push(["Fricción y deslizamiento","Movilice con sábana o dispositivo de transferencia sin arrastrar; proteja las prominencias con apósitos o lubricantes."]);
+  return {g,t};
+}
+
+function weakFactors(){
+  const names = {sens:"percepción sensorial disminuida",hum:"exposición a la humedad",act:"actividad limitada",mov:"movilidad limitada",nut:"nutrición deficiente",fric:"fricción y deslizamiento"};
+  return SCALES.filter(s => state[s.key] && state[s.key]<=2).map(s=>names[s.key]);
+}
+
+function nowStr(){
+  const d=new Date(); const p=n=>String(n).padStart(2,"0");
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function buildNote(score, risk, plan){
+  const pid = $("#pid").value.trim() || "[identificador]";
+  const svc = $("#pservice").value.trim();
+  const detail = SCALES.map(s=>`${s.name} ${state[s.key]}`).join(", ");
+  const f = weakFactors();
+  const medidas = plan.g.slice(0,5).map(m=>m[0].toLowerCase()).join("; ");
+  return `${nowStr()} – ${pid}${svc?" – "+svc:""}
+Se realiza valoración del riesgo de lesiones por presión con la escala de Braden. Puntaje total: ${score}/23 (${detail}). Clasificación: ${risk.label.toLowerCase()}.
+${f.length?"Factores de riesgo identificados: "+f.join(", ")+".":"No se identifican subescalas con puntaje crítico."}
+${risk.id==="ok"?"Se fomenta la movilidad y el autocuidado de la piel.":"Plan: "+medidas+"."}
+Se brinda educación al paciente y su familia sobre prevención de lesiones por presión. Revalorar según protocolo institucional o ante cambios en el estado del paciente.`;
+}
+
+function buildFamily(risk){
+  const f = weakFactors();
+  const lines = [];
+  if(risk.id==="ok"){
+    lines.push("Hoy la piel de su familiar tiene poco riesgo de lastimarse por estar mucho tiempo en la misma posición. Para que siga así:");
+    lines.push("• Anímelo a caminar y moverse según lo que indique el equipo de salud.");
+    lines.push("• Avísenos si nota enrojecimiento, ampollas o dolor en la espalda baja, las caderas o los talones.");
+  } else {
+    const nivel = {low:"algo de riesgo",mod:"un riesgo moderado",high:"un riesgo alto",vhigh:"un riesgo muy alto"}[risk.id];
+    lines.push(`Su familiar tiene ${nivel} de que se le formen heridas en la piel por pasar mucho tiempo acostado o sentado en la misma posición. Estas heridas se pueden prevenir entre todos:`);
+    lines.push("• El equipo de enfermería lo cambiará de posición varias veces durante el día y la noche. Si nota que lleva mucho tiempo igual, avísenos.");
+    lines.push("• No le ponga cremas con alcohol ni le frote con fuerza las zonas de los huesos (espalda baja, caderas, talones).");
+    lines.push("• Avísenos si ve la piel roja que no se aclara al presionarla, ampollas o heridas.");
+    if(f.includes("exposición a la humedad")) lines.push("• Si nota la ropa, el pañal o las sábanas mojadas, llámenos para cambiarlas pronto: la humedad lastima la piel.");
+    if(f.includes("nutrición deficiente")) lines.push("• Ayúdele a comer y a tomar líquidos si se lo permiten. Una buena alimentación ayuda a que la piel sea más fuerte.");
+    if(f.includes("fricción y deslizamiento")) lines.push("• No lo jale ni lo arrastre sobre la cama para subirlo: pídanos ayuda para moverlo.");
+    if(f.includes("actividad limitada")||f.includes("movilidad limitada")) lines.push("• Si puede moverse un poco, anímelo a cambiar de posición y a mover las piernas y los brazos.");
+  }
+  lines.push("Si tiene preguntas, hable con el personal de enfermería.");
+  return lines.join("\n");
+}
+
+function copyBlock(id){
+  return `<div class="copy-row"><button class="btn primary" type="button" data-copy="${id}">Copiar texto</button><span class="copied" id="ok-${id}" hidden>Copiado</span></div>`;
+}
+
+function render(){
+  const done = SCALES.filter(s=>state[s.key]).length;
+  SCALES.forEach(s=>{
+    const el = $("#val-"+s.key);
+    el.textContent = state[s.key] ? `${state[s.key]} / ${s.opts.length}` : `— / ${s.opts.length}`;
+    el.classList.toggle("set", !!state[s.key]);
+  });
+  $("#progress").textContent = `${done} de 6 subescalas`;
+  const pill = $("#riskPill");
+  document.querySelectorAll(".light").forEach(l=>l.classList.remove("on"));
+
+  if(done<6){
+    const partial = SCALES.reduce((a,s)=>a+(state[s.key]||0),0);
+    $("#scoreNum").innerHTML = `${done? partial : "–"}<small>/23</small>`;
+    $("#scoreNum").style.color = "var(--muted)";
+    pill.textContent = done ? "Valoración incompleta" : "Sin calcular";
+    pill.style.background="var(--bg)"; pill.style.color="var(--muted)";
+    const msg = `<p class="empty">Marque una opción en cada una de las 6 subescalas. ${done?`Faltan ${6-done}.`:""} El resultado aparece cuando la valoración está completa.</p>`;
+    $("#panel-plan").innerHTML = msg; $("#panel-nota").innerHTML = msg; $("#panel-fam").innerHTML = msg;
+    $("#mScore").innerHTML = `${done? partial : "–"}<small>/23</small>`; $("#mScore").style.color="var(--muted)";
+    $("#mRisk").textContent = pill.textContent; $("#mRisk").style.color="var(--muted)";
+    return;
+  }
+  const score = SCALES.reduce((a,s)=>a+state[s.key],0);
+  const risk = riskOf(score);
+  $("#scoreNum").innerHTML = `${score}<small>/23</small>`;
+  $("#scoreNum").style.color = `var(${risk.c})`;
+  pill.textContent = risk.label;
+  pill.style.background = `var(${risk.c}-bg)`; pill.style.color = `var(${risk.c})`;
+  document.querySelector(`.light[data-r="${risk.id}"]`).classList.add("on");
+  $("#mScore").innerHTML = `${score}<small>/23</small>`; $("#mScore").style.color=`var(${risk.c})`;
+  $("#mRisk").textContent = risk.label; $("#mRisk").style.color=`var(${risk.c})`;
+
+  const plan = buildPlan(score, risk);
+  $("#panel-plan").innerHTML = `
+    <h3>Medidas para ${risk.label.toLowerCase()} (${risk.min===6?'≤9':risk.max===23?'≥19':risk.min+'–'+risk.max} puntos)</h3>
+    <ul>${plan.g.map(m=>`<li><b>${m[0]}.</b> <span class="why">${m[1]}</span></li>`).join("")}</ul>
+    ${plan.t.length?`<h3>Según los factores de este paciente</h3><ul>${plan.t.map(m=>`<li><b>${m[0]}:</b> ${m[1]}</li>`).join("")}</ul>`:""}
+    <p class="src">Medidas basadas en la Guía Internacional NPIAP/EPUAP/PPPIA (2019) y el paquete instruccional del Ministerio de Salud de Colombia. Adáptelas al protocolo de su institución.</p>`;
+  $("#panel-nota").innerHTML = `<h3>Registro sugerido</h3><div class="note-box" id="txt-nota">${escapeHtml(buildNote(score,risk,plan))}</div>${copyBlock("nota")}<p class="src">Revise y ajuste el texto antes de pegarlo en la historia clínica.</p>`;
+  $("#panel-fam").innerHTML = `<h3>Para leer o entregar al paciente y su familia</h3><div class="note-box" id="txt-fam">${escapeHtml(buildFamily(risk))}</div>${copyBlock("fam")}<p class="src">Lenguaje sencillo, adaptado al nivel de riesgo y a los factores marcados.</p>`;
+}
+
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+document.addEventListener("click", async e=>{
+  const b = e.target.closest("[data-copy]"); if(!b) return;
+  const id=b.dataset.copy, box=$("#txt-"+id), ok=$("#ok-"+id);
+  try{ await navigator.clipboard.writeText(box.textContent); ok.textContent="Copiado"; }
+  catch(err){ const r=document.createRange(); r.selectNodeContents(box); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); ok.textContent="Texto seleccionado: use Ctrl+C"; }
+  ok.hidden=false; setTimeout(()=>ok.hidden=true,2500);
+});
+
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>{x.setAttribute("aria-selected", x===t?"true":"false"); $("#"+x.getAttribute("aria-controls")).hidden = x!==t;});
+}));
+
+function setValues(v){
+  SCALES.forEach(s=>{ delete state[s.key]; document.querySelectorAll(`input[name="${s.key}"]`).forEach(i=>i.checked=false); });
+  if(v) Object.entries(v).forEach(([k,val])=>{ state[k]=val; $(`#${k}-${val}`).checked=true; });
+  render();
+}
+function loadSample(){ $("#pid").value=SAMPLE.pid; $("#pservice").value=SAMPLE.service; setValues(SAMPLE.v); $("#sampleTag").hidden=false; }
+
+$("#btnSample").addEventListener("click", loadSample);
+$("#btnReset").addEventListener("click", ()=>{ $("#pid").value=""; $("#pservice").value=""; $("#sampleTag").hidden=true; setValues(null); window.scrollTo({top:0,behavior:"smooth"}); });
+$("#btnInfo").addEventListener("click", ()=>{ $("#modal").hidden=false; $("#btnAccept").focus(); });
+$("#btnAccept").addEventListener("click", ()=>{ $("#modal").hidden=true; });
+["pid","pservice"].forEach(id=>$("#"+id).addEventListener("input", ()=>{ if(SCALES.every(s=>state[s.key])) render(); }));
+
+buildScales();
+loadSample();
+</script>
+</body>
+</html>
